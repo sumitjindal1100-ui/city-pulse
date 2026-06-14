@@ -1,0 +1,14 @@
+{
+  "name": "city-pulse",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Live municipal ops command center — NYC 311 service request analytics, SA/BA portfolio piece.",
+  "scripts": {
+    "fetch": "node scripts/fetch-data.js",
+    "serve": "npx --yes http-server . -p 8080 -c-1"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

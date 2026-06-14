@@ -1,0 +1,46 @@
+name: Refresh live data
+
+on:
+  schedule:
+    # Every hour at :07 — staggered to avoid the top-of-hour spike on Socrata.
+    - cron: '7 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/fetch-data.js'
+      - '.github/workflows/refresh-data.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch latest snapshot
+        run: node scripts/fetch-data.js
+
+      - name: Commit snapshot
+        run: |
+          git config user.name "city-pulse-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/latest.json data/history.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore(data): refresh snapshot $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>City Pulse — Live Municipal Ops Command Center</title>
+    <meta
+      name="description"
+      content="Live, data-driven systems-analyst dashboard for NYC 311 service requests. Process diagnosis, SLA tracking, and what-if simulation on real public data."
+    />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-theme="ops-dark" data-density="comfortable">
+    <header class="topbar">
+      <div class="brand">
+        <span class="pulse-dot" aria-hidden="true"></span>
+        <div>
+          <h1>City Pulse</h1>
+          <p class="tag">Live Municipal Ops Command Center</p>
+        </div>
+      </div>
+      <div class="status-strip">
+        <div class="kpi-mini">
+          <span class="kpi-mini-label">Status</span>
+          <span class="kpi-mini-val" id="liveStatus">
+            <span class="live-dot"></span> LIVE
+          </span>
+        </div>
+        <div class="kpi-mini">
+          <span class="kpi-mini-label">As of</span>
+          <span class="kpi-mini-val" id="asOf">—</span>
+        </div>
+        <div class="kpi-mini">
+          <span class="kpi-mini-label">City</span>
+          <span class="kpi-mini-val" id="cityName">—</span>
+        </div>
+        <div class="kpi-mini">
+          <span class="kpi-mini-label">Source</span>
+          <a id="sourceLink" href="#" target="_blank" rel="noopener">NYC Open Data</a>
+        </div>
+        <button class="btn icon-btn" id="openSettings" title="Customize" aria-label="Customize">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 1 1 7 4.6l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="ops" role="tab">Operations</button>
+      <button class="tab" data-tab="process" role="tab">Process Map (SA)</button>
+      <button class="tab" data-tab="simulator" role="tab">What-If Simulator</button>
+      <button class="tab" data-tab="brd" role="tab">BRD (BA)</button>
+      <button class="tab" data-tab="about" role="tab">About</button>
+    </nav>
+
+    <main>
+      <!-- OPS TAB -->
+      <section class="tab-panel active" id="tab-ops">
+        <div class="kpi-row" id="kpiRow"></div>
+
+        <div class="grid">
+          <div class="card span-2">
+            <div class="card-head">
+              <h2>Live Incident Map</h2>
+              <div class="card-tools">
+                <label class="seg">
+                  <input type="checkbox" id="heatToggle" />
+                  <span>Heat</span>
+                </label>
+                <span class="hint" id="mapCount">0 plotted</span>
+              </div>
+            </div>
+            <div id="map" class="map"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Live Ticker</h2>
+              <span class="hint">newest first</span>
+            </div>
+            <ul id="ticker" class="ticker"></ul>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>By Borough</h2>
+              <span class="hint">click to filter map</span>
+            </div>
+            <canvas id="boroughChart"></canvas>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Top Complaint Types</h2>
+              <span class="hint">top 10</span>
+            </div>
+            <canvas id="typeChart"></canvas>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Intake by Hour (UTC)</h2>
+            </div>
+            <canvas id="hourChart"></canvas>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Channel Mix</h2>
+              <span class="hint">how citizens report</span>
+            </div>
+            <canvas id="channelChart"></canvas>
+          </div>
+
+          <div class="card span-2">
+            <div class="card-head">
+              <h2>SLA Cycle-Time Distribution</h2>
+              <span class="hint">closed tickets — hours to resolution</span>
+            </div>
+            <canvas id="cycleChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROCESS TAB -->
+      <section class="tab-panel" id="tab-process">
+        <div class="card">
+          <div class="card-head">
+            <h2>As-Is Process Model — 311 Service Request Lifecycle</h2>
+            <span class="hint">cycle times measured from live data</span>
+          </div>
+          <div id="bpmn" class="bpmn"></div>
+          <div class="bpmn-legend">
+            <div><span class="lg-dot ok"></span> within SLA target (≤ 72h)</div>
+            <div><span class="lg-dot warn"></span> approaching breach</div>
+            <div><span class="lg-dot bad"></span> breach</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Bottleneck Diagnosis</h2>
+            <span class="hint">live-data driven</span>
+          </div>
+          <div id="bottleneck" class="bottleneck"></div>
+        </div>
+      </section>
+
+      <!-- SIMULATOR TAB -->
+      <section class="tab-panel" id="tab-simulator">
+        <div class="card">
+          <div class="card-head">
+            <h2>What-If: Predicted Resolution Time</h2>
+            <span class="hint">empirical percentiles from live data</span>
+          </div>
+          <div class="sim-grid">
+            <div class="sim-controls">
+              <label>
+                Borough
+                <select id="simBorough"></select>
+              </label>
+              <label>
+                Complaint type
+                <select id="simType"></select>
+              </label>
+              <label>
+                Channel (informational)
+                <select id="simChannel">
+                  <option>PHONE</option>
+                  <option>ONLINE</option>
+                  <option>MOBILE</option>
+                  <option>OTHER</option>
+                </select>
+              </label>
+              <button class="btn primary" id="simRun">Run prediction</button>
+            </div>
+            <div class="sim-results" id="simResults">
+              <p class="muted">Pick a borough + complaint type, then run.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BRD TAB -->
+      <section class="tab-panel" id="tab-brd">
+        <div class="card brd">
+          <div class="card-head">
+            <h2>Business Requirements Document — Auto-Routing for High-Volume Complaints</h2>
+            <button class="btn ghost" id="printBrd">Print / PDF</button>
+          </div>
+          <div id="brdBody"></div>
+        </div>
+      </section>
+
+      <!-- ABOUT TAB -->
+      <section class="tab-panel" id="tab-about">
+        <div class="card prose">
+          <h2>About City Pulse</h2>
+          <p>
+            A live, zero-cost ops dashboard built as a Systems Analyst / Business Analyst portfolio
+            piece. It pulls real NYC 311 Service Request data from the city's public Socrata API,
+            computes process-cycle analytics, and presents them through a command-center UI.
+          </p>
+          <h3>Architecture</h3>
+          <ul>
+            <li><b>Data:</b> NYC Open Data — 311 Service Requests (Socrata, no auth required).</li>
+            <li><b>Pipeline:</b> Node.js fetcher run on a GitHub Actions cron, commits <code>data/latest.json</code>.</li>
+            <li><b>Frontend:</b> Vanilla HTML/CSS/JS, Leaflet map, Chart.js, served by GitHub Pages.</li>
+            <li><b>Cost:</b> $0 — static site, no backend, no database.</li>
+          </ul>
+          <h3>SA / BA framing</h3>
+          <ul>
+            <li>Process map of the 311 lifecycle with measured cycle times</li>
+            <li>Bottleneck diagnosis grounded in current data</li>
+            <li>What-If simulator using empirical percentiles</li>
+            <li>BRD draft for an auto-routing improvement, with quantified expected impact</li>
+          </ul>
+          <h3>Customize</h3>
+          <p>
+            Open the gear icon (top-right) to switch themes, density, refresh interval, default
+            borough filter, and SLA target. Settings persist in <code>localStorage</code>.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Settings drawer -->
+    <aside class="drawer" id="settingsDrawer" aria-hidden="true">
+      <div class="drawer-head">
+        <h3>Customize</h3>
+        <button class="btn ghost" id="closeSettings" aria-label="Close">×</button>
+      </div>
+      <div class="drawer-body">
+        <fieldset>
+          <legend>Theme</legend>
+          <label><input type="radio" name="theme" value="ops-dark" /> Ops dark</label>
+          <label><input type="radio" name="theme" value="ops-amber" /> Amber CRT</label>
+          <label><input type="radio" name="theme" value="ops-mint" /> Mint matrix</label>
+          <label><input type="radio" name="theme" value="ops-light" /> Daylight</label>
+        </fieldset>
+        <fieldset>
+          <legend>Density</legend>
+          <label><input type="radio" name="density" value="comfortable" /> Comfortable</label>
+          <label><input type="radio" name="density" value="compact" /> Compact</label>
+        </fieldset>
+        <fieldset>
+          <legend>Auto-refresh</legend>
+          <select id="refreshInterval">
+            <option value="0">Off</option>
+            <option value="60">Every 1 min</option>
+            <option value="300">Every 5 min</option>
+            <option value="900">Every 15 min</option>
+          </select>
+        </fieldset>
+        <fieldset>
+          <legend>Default borough filter</legend>
+          <select id="defaultBorough">
+            <option value="ALL">All boroughs</option>
+          </select>
+        </fieldset>
+        <fieldset>
+          <legend>SLA target (hours)</legend>
+          <input type="number" id="slaTarget" min="1" max="240" value="72" />
+        </fieldset>
+        <fieldset>
+          <legend>Map tile style</legend>
+          <select id="tileStyle">
+            <option value="dark">Dark (Carto)</option>
+            <option value="osm">OpenStreetMap</option>
+            <option value="positron">Positron (light)</option>
+          </select>
+        </fieldset>
+        <button class="btn primary" id="applySettings">Apply</button>
+        <button class="btn ghost" id="resetSettings">Reset</button>
+      </div>
+    </aside>
+
+    <div class="overlay" id="overlay"></div>
+
+    <footer class="footer">
+      <span>City Pulse · Built with public APIs · Updated hourly via GitHub Actions</span>
+      <span id="footerStamp"></span>
+    </footer>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
