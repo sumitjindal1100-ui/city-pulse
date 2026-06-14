@@ -1,5 +1,7 @@
 # City Pulse
 
+> **Live demo:** <https://sumitjindal1100-ui.github.io/city-pulse/> · One of seven projects in my portfolio: <https://sumitjindal1100-ui.github.io/>
+
 **Live Public Transit + 311 Service-Request Analytics Dashboard.**
 A real, hourly-updating, zero-cost ops command center for a real city's open data,
 framed as a Systems Analyst / Business Analyst portfolio piece.
